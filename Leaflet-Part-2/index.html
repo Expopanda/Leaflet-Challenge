@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Earthquake Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
+
+    <!-- Your CSS (if needed) -->
+    <link rel="stylesheet" type="text/css" href="Leaflet-Part-2/static/css/style.css">
+
+    <!-- D3 JavaScript -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+
+</head>
+
+<body>
+
+    <!-- The div that holds our map -->
+    <div id="map" style="height: 500px;"></div>
+
+    <!-- Your JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Check if the map is already initialized
+            if (!L.DomUtil.get('map')) {
+                // Leaflet map initialization code
+                var mymap = L.map('map').setView([0, 0], 2);
+
+                // Add a tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(mymap);
+
+                console.log('Before data fetch');
+                // Fetch earthquake data using Fetch API
+                fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson')
+                    .then(response => {
+                        console.log('Data fetch successful');
+                        if (!response.ok) {
+                            throw new Error(`Network response was not ok (${response.status} ${response.statusText})`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Entire GeoJSON data:', data);
+
+                        // Define marker size based on magnitude
+                        function markerSize(magnitude) {
+                            // Handle cases where magnitude is missing or NaN
+                            return isNaN(magnitude) ? 0 : Math.sqrt(magnitude) * 5;
+                        }
+
+                        // Define color scale for depth
+                        function getColorForDepth(depth) {
+                            return depth > 100 ? '#800026' :
+                                depth > 50 ? '#BD0026' :
+                                    '#FFEDA0';
+                        }
+
+                        // Loop through earthquake features and create circle markers
+                        data.features.forEach(feature => {
+                            var magnitude = feature.properties.mag;
+                            var depth = feature.geometry.coordinates[2];
+                            var latitude = feature.geometry.coordinates[1];
+                            var longitude = feature.geometry.coordinates[0];
+
+                            console.log('Latitude:', latitude, 'Longitude:', longitude);
+
+                            // Check for valid coordinates
+                            if (!isNaN(latitude) && !isNaN(longitude)) {
+                                // Create circle marker
+                                L.circle([latitude, longitude], {
+                                    fillOpacity: 0.75,
+                                    color: 'white',
+                                    fillColor: getColorForDepth(depth),
+                                    radius: markerSize(magnitude)
+                                }).bindPopup(`<h1>Earthquake</h1> <hr> <h3>Magnitude: ${magnitude}</h3> <h3>Depth: ${depth} km</h3>`).addTo(mymap);
+                            }
+                        });
+
+                        // Add legend
+                        var legend = L.control({ position: 'bottomright' });
+
+                        legend.onAdd = function (map) {
+                            var div = L.DomUtil.create('div', 'info legend');
+                            var grades = [0, 50, 100];
+                            var labels = [];
+
+                            // Loop through depth ranges and generate a label with a colored square for each range
+                            for (var i = 0; i < grades.length; i++) {
+                                div.innerHTML +=
+                                    '<i style="background:' + getColorForDepth(grades[i] + 1) + '"></i> ' +
+                                    grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + ' km<br>' : '+ km');
+                            }
+
+                            return div;
+                        };
+
+                        legend.addTo(mymap);
+                    })
+                    .catch(error => console.error('Error fetching earthquake data:', error));
+            }
+        });
+    </script>
+  
+    <!-- Include your logic.js file -->
+    <script src="C:\Users\smith\Bootcamp_Classwork\Challenge 15\Leaflet-Challenge\Leaflet-Part-2\static\js\logic.js"></script>
+</body>
+
+</html>
